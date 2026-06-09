@@ -1,0 +1,17 @@
+[columns]
+keep = ["name", "email", "age", "status"]
+
+[filters]
+status = "active"
+
+[schema]
+name = "TEXT"
+email = "TEXT"
+age = "INTEGER"
+status = "TEXT"
+phone ="TEXT"
+
+
+[migration]
+table = "employees"
+batch_size = 10000
