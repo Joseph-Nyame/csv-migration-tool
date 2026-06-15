@@ -1,7 +1,11 @@
+use config::read_config;
+use migrator::migrate_csv;
 use anyhow::Result;
 mod config;
 mod db;
-use config::read_config;
+mod migrator;
+
+
 
 
 #[tokio::main]
@@ -12,9 +16,32 @@ async fn main()->Result<()>
     let db_pool = create_pool().await?;
     println!("connected to database");
     let config = read_config("transform.toml")?;
-    db::ensure_table_exists(&db_pool,&config.migration.table,&config.schema).await?;
+    db::ensure_table_exists(&db_pool, &config.migration.table,&config.schema).await?;
     db::sync_columns(&db_pool,&config.migration.table,config.schema.clone()).await?;
-    println!("config: {:#?}",config);
+    db::ensure_migrations_table(&db_pool).await?;
+
+    db::list_migrations(&db_pool).await?;
+
+    let csv_file="test_large1.csv";
+    if db::check_already_migrated(&db_pool,csv_file).await?{
+        println!("Already migrated: {}",csv_file);
+
+        println!("Do you want to rollback or remove the migration? (y/n): ");
+        let mut answer = String::new();
+        std::io::stdin().read_line(&mut answer).expect("failed to read line");
+        let answer = answer.trim().to_lowercase();
+        if answer == "y" || answer == "yes"{
+            println!("Rolling back...");
+            db::rollback_migration(&db_pool,csv_file).await?;
+            println!("successfullly rolled back migration");
+            return Ok(());
+        }else{
+            println!("Exiting...");
+            return Ok(())
+        }
+    }
+    migrate_csv(&db_pool,csv_file,&config.migration.table,&config.columns.keep,config.migration.batch_size,&config.schema).await?;
+    
     
     Ok(())
 }

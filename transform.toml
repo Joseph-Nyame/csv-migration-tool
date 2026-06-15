@@ -13,5 +13,6 @@ phone ="TEXT"
 
 
 [migration]
-table = "employees"
+table = "members"
 batch_size = 10000
+
